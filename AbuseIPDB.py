@@ -1,11 +1,9 @@
 import requests
 import json
-import pandas as pd
 from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-import textwrap
+import time
 
 # Define the ANSI color codes
 reset = '\033[0m'  # Reset
@@ -14,18 +12,35 @@ magenta = '\033[35m'  # Magenta
 yellow = '\033[33m'  # Yellow
 green = '\033[32m'  # Green
 
+# Global variables for API rate limiting
+requests_made_today = 0
+
 # Banner
 def print_banner():
     print(f"{cyan} Threat Analysis Tool by: Dark_Shadow04 {reset}\n")
     print(f"{yellow} https://github.com/DarkShadow04  {reset}\n")
-    print(f"{magenta} Copyright 2023 Dark_Shadow04 {reset}\n")
+    print(f"{magenta} Copyright 2024 Dark_Shadow04 {reset}\n")
 
 # Function to make API requests to AbuseIPDB
 def query_abuseipdb(api_key, ip):
+    global requests_made_today
     url = f"https://api.abuseipdb.com/api/v2/check?ipAddress={ip}"
     headers = {'Key': api_key, 'Accept': 'application/json'}
+    
+    # Check daily limit
+    if requests_made_today >= 1000:
+        print("Warning: Daily API request limit exceeded.")
+        return None
+    
     response = requests.get(url, headers=headers)
-    return response.json()
+    if response.status_code == 200:
+        requests_made_today += 1
+        remaining_scans = 1000 - requests_made_today
+        print(f"Remaining API requests for today: {remaining_scans}")
+        return response.json()
+    else:
+        print("Error occurred while making the request.")
+        return None
 
 # Function to create PDF report
 def create_pdf_report(results):
@@ -49,9 +64,13 @@ def create_pdf_report(results):
             c.drawString(100, y - 20, f"Country Code: {result['countryCode']}")
             c.drawString(300, y - 20, f"Usage Type: {result['usageType']}")
             c.drawString(100, y - 40, f"ISP: {result['isp']}")
-            c.drawString(300, y - 40, f"Total Reports: {result['totalReports']}")
-            c.drawString(100, y - 60, f"Number of Distinct Users: {result['numDistinctUsers']}")
-            c.drawString(300, y - 60, f"Last Reported At: {result['lastReportedAt']}")
+            if 'city' in result:  # Check if 'city' information available
+                c.drawString(300, y - 40, f"City: {result['city']}")  # Added city information
+            else:
+                c.drawString(300, y - 40, "City information not available")  # If city information not available
+            c.drawString(300, y - 60, f"Total Reports: {result['totalReports']}")
+            c.drawString(100, y - 80, f"Number of Distinct Users: {result['numDistinctUsers']}")
+            c.drawString(300, y - 80, f"Last Reported At: {result['lastReportedAt']}")
             y -= 100  # Adjust the y-coordinate for spacing
             y -= 20  # Add extra space between different targets
         c.save()
@@ -68,18 +87,25 @@ def create_excel_report(results):
     try:
         wb = Workbook()
         ws = wb.active
-        ws.append(['IP', 'Abuse Confidence Score', 'Country Code', 'Usage Type', 'ISP', 'Total Reports', 'Number of Distinct Users', 'Last Reported At'])
+        ws.append(['IP', 'Abuse Confidence Score', 'Country Code', 'Usage Type', 'ISP', 'City', 'Total Reports', 'Number of Distinct Users', 'Last Reported At'])
         for result in results:
-            ws.append([
+            row = [
                 result['ip'],
                 result['abuseConfidenceScore'],
                 result['countryCode'],
                 result['usageType'],
-                result['isp'],
+                result['isp']
+            ]
+            if 'city' in result:  # Check if 'city' information available
+                row.append(result['city'])  # Added city information
+            else:
+                row.append("City information not available")  # If city information not available
+            row.extend([
                 result['totalReports'],
                 result['numDistinctUsers'],
                 result['lastReportedAt']
             ])
+            ws.append(row)
         wb.save(excel_path)
         print(f"Excel report generated at: {excel_path}")
     except Exception as e:
@@ -87,6 +113,7 @@ def create_excel_report(results):
 
 # Main function
 def main():
+    global requests_made_today, last_request_time
     print_banner()
     print(f"{green}Welcome to the Threat Analysis Tool using AbuseIPDB API.{reset}")
     # Ask user whether to edit existing API keys
@@ -112,17 +139,19 @@ def main():
             print("\n[ANALYZE IP]\n")
             ip = input("Enter IP address: ")
             result = query_abuseipdb(api_key, ip)
-            results.append({
-                'ip': ip,
-                'abuseConfidenceScore': result['data']['abuseConfidenceScore'],
-                'countryCode': result['data']['countryCode'],
-                'usageType': result['data']['usageType'],
-                'isp': result['data']['isp'],
-                'totalReports': result['data']['totalReports'],
-                'numDistinctUsers': result['data']['numDistinctUsers'],
-                'lastReportedAt': result['data']['lastReportedAt']
-            })
-            print(json.dumps(result, indent=4))  # Print result to terminal
+            if result:
+                results.append({
+                    'ip': ip,
+                    'abuseConfidenceScore': result['data']['abuseConfidenceScore'],
+                    'countryCode': result['data']['countryCode'],
+                    'usageType': result['data']['usageType'],
+                    'isp': result['data']['isp'],
+                    'city': result['data'].get('city', 'City information not available'),  # Add city information
+                    'totalReports': result['data']['totalReports'],
+                    'numDistinctUsers': result['data']['numDistinctUsers'],
+                    'lastReportedAt': result['data']['lastReportedAt']
+                })
+                print(json.dumps(result, indent=4))  # Print result to terminal
         elif choice == '2':
             print("\n[ANALYZE FILE]\n")
             file_path = input("Enter path to the file containing list of IP addresses: ")
@@ -131,17 +160,19 @@ def main():
                 for ip in ips:
                     ip = ip.strip()
                     result = query_abuseipdb(api_key, ip)
-                    results.append({
-                        'ip': ip,
-                        'abuseConfidenceScore': result['data']['abuseConfidenceScore'],
-                        'countryCode': result['data']['countryCode'],
-                        'usageType': result['data']['usageType'],
-                        'isp': result['data']['isp'],
-                        'totalReports': result['data']['totalReports'],
-                        'numDistinctUsers': result['data']['numDistinctUsers'],
-                        'lastReportedAt': result['data']['lastReportedAt']
-                    })
-                    print(json.dumps(result, indent=4))  # Print result to terminal
+                    if result:
+                        results.append({
+                            'ip': ip,
+                            'abuseConfidenceScore': result['data']['abuseConfidenceScore'],
+                            'countryCode': result['data']['countryCode'],
+                            'usageType': result['data']['usageType'],
+                            'isp': result['data']['isp'],
+                            'city': result['data'].get('city', 'City information not available'),  # Add city information
+                            'totalReports': result['data']['totalReports'],
+                            'numDistinctUsers': result['data']['numDistinctUsers'],
+                            'lastReportedAt': result['data']['lastReportedAt']
+                        })
+                        print(json.dumps(result, indent=4))  # Print result to terminal
         elif choice == '3':
             if not results:
                 print("No results to generate report.")
