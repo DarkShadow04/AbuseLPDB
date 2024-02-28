@@ -63,7 +63,7 @@ def create_pdf_report(results):
             c.drawString(300, y, f"Abuse Confidence Score: {result['abuseConfidenceScore']}")
             c.drawString(100, y - 20, f"Country Code: {result['countryCode']}")
             c.drawString(300, y - 20, f"Usage Type: {result['usageType']}")
-            c.drawString(100, y - 40, f"ISP: {result['isp']}")
+            c.drawString(100, y - 40, f"domain: {result['domain']}")
             if 'city' in result:  # Check if 'city' information available
                 c.drawString(300, y - 40, f"City: {result['city']}")  # Added city information
             else:
@@ -87,14 +87,14 @@ def create_excel_report(results):
     try:
         wb = Workbook()
         ws = wb.active
-        ws.append(['IP', 'Abuse Confidence Score', 'Country Code', 'Usage Type', 'ISP', 'City', 'Total Reports', 'Number of Distinct Users', 'Last Reported At'])
+        ws.append(['IP', 'Abuse Confidence Score', 'Country Code', 'Usage Type', 'domain', 'City', 'Total Reports', 'Number of Distinct Users', 'Last Reported At'])
         for result in results:
             row = [
                 result['ip'],
                 result['abuseConfidenceScore'],
                 result['countryCode'],
                 result['usageType'],
-                result['isp']
+                result['domain']
             ]
             if 'city' in result:  # Check if 'city' information available
                 row.append(result['city'])  # Added city information
@@ -145,7 +145,7 @@ def main():
                     'abuseConfidenceScore': result['data']['abuseConfidenceScore'],
                     'countryCode': result['data']['countryCode'],
                     'usageType': result['data']['usageType'],
-                    'isp': result['data']['isp'],
+                    'domain': result['data']['domain'],
                     'city': result['data'].get('city', 'City information not available'),  # Add city information
                     'totalReports': result['data']['totalReports'],
                     'numDistinctUsers': result['data']['numDistinctUsers'],
@@ -166,7 +166,7 @@ def main():
                             'abuseConfidenceScore': result['data']['abuseConfidenceScore'],
                             'countryCode': result['data']['countryCode'],
                             'usageType': result['data']['usageType'],
-                            'isp': result['data']['isp'],
+                            'domain': result['data']['domain'],
                             'city': result['data'].get('city', 'City information not available'),  # Add city information
                             'totalReports': result['data']['totalReports'],
                             'numDistinctUsers': result['data']['numDistinctUsers'],
@@ -185,7 +185,7 @@ def main():
                 else:
                     print("Invalid report format.")
         elif choice == '4':
-            print(f"{green}Exiting from 'Dark_Shadow04' private database console.{reset}")
+            print(f"{green}Exiting from 'Dark_Shadow04' private database console with the blessings of Dark_Shadow04 {reset}")
             break
         else:
             print("Invalid choice. Please enter a valid option.")
