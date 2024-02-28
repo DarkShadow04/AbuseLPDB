@@ -24,7 +24,7 @@ This Threat Analysis Tool provides functionalities to analyze IP addresses and g
 1. Run the script:
 
     ```bash
-    python threat_analysis_tool.py
+    python AbuseIPDB.py
     ```
 
 2. Follow the on-screen instructions to perform the desired actions.
