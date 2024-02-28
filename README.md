@@ -16,7 +16,7 @@ This Threat Analysis Tool provides functionalities to analyze IP addresses and g
 1. Clone the repository:
 
     ```bash
-    https://github.com/DarkShadow04/AbuseLPDB.git
+    git clone https://github.com/DarkShadow04/AbuseLPDB.git
     ```
 
 ## Usage
